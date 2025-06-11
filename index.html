@@ -2,12 +2,89 @@
 <html>
 <head>
     <title>TikTok Auth - Heybie</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .icon { font-size: 3rem; margin-bottom: 1rem; }
+        h1 { margin: 0 0 1rem 0; font-size: 1.5rem; }
+        p { margin: 0.5rem 0; opacity: 0.8; }
+        .code { 
+            background: rgba(255,255,255,0.2); 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-family: monospace; 
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
-    <h1>TikTok Authentication Complete</h1>
-    <p>You can close this window and return to the Heybie app.</p>
+    <div class="container">
+        <div class="icon">✅</div>
+        <h1>TikTok Connected Successfully!</h1>
+        <p id="status">Processing login...</p>
+        <div id="code-display" class="code" style="display:none;"></div>
+        <p><small>You can close this page and return to the Heybie app.</small></p>
+    </div>
+    
     <script>
-        setTimeout(() => window.close(), 2000);
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+        
+        const statusEl = document.getElementById('status');
+        const codeDisplayEl = document.getElementById('code-display');
+        
+        if (error) {
+            statusEl.textContent = `Error: ${error}`;
+            statusEl.style.color = '#ff6b6b';
+        } else if (code) {
+            statusEl.textContent = 'Login successful! Authorization code received.';
+            codeDisplayEl.textContent = `Auth Code: ${code}`;
+            codeDisplayEl.style.display = 'block';
+            
+            // Store the code in localStorage for the app to pick up
+            localStorage.setItem('tiktok_auth_code', code);
+            localStorage.setItem('tiktok_auth_state', state || '');
+            localStorage.setItem('tiktok_auth_success', 'true');
+            localStorage.setItem('tiktok_auth_timestamp', Date.now().toString());
+            
+            // Try to communicate with the app (if it supports custom URL schemes)
+            setTimeout(() => {
+                try {
+                    window.location.href = `com.heybiecom.heybie://tiktok-callback?code=${code}&state=${state}`;
+                } catch (e) {
+                    console.log('Could not redirect to app');
+                }
+            }, 1000);
+        } else {
+            statusEl.textContent = 'No authorization code received.';
+            statusEl.style.color = '#ff6b6b';
+        }
+        
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+            window.close();
+        }, 5000);
     </script>
 </body>
 </html>
