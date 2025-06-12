@@ -12,36 +12,89 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #25F4EE 0%, #FE2C55 50%, #000000 100%);
             color: white;
         }
         .container {
             text-align: center;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2.5rem;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 24px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(37, 244, 238, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
         }
-        .icon { font-size: 3rem; margin-bottom: 1rem; }
-        h1 { margin: 0 0 1rem 0; font-size: 1.5rem; }
-        p { margin: 0.5rem 0; opacity: 0.8; }
+        .icon { 
+            font-size: 4rem; 
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, #25F4EE, #FE2C55);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h1 { 
+            margin: 0 0 1rem 0; 
+            font-size: 1.8rem; 
+            font-weight: bold;
+            background: linear-gradient(45deg, #25F4EE, #FE2C55);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p { margin: 0.8rem 0; opacity: 0.9; line-height: 1.4; }
+        .status { 
+            font-size: 1.1rem; 
+            margin: 1.5rem 0;
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(37, 244, 238, 0.1);
+            border: 1px solid rgba(37, 244, 238, 0.3);
+        }
         .code { 
-            background: rgba(255,255,255,0.2); 
-            padding: 10px; 
-            border-radius: 8px; 
-            font-family: monospace; 
-            margin: 10px 0;
+            background: rgba(37, 244, 238, 0.1); 
+            padding: 15px; 
+            border-radius: 12px; 
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace; 
+            margin: 15px 0;
+            border: 1px solid rgba(37, 244, 238, 0.3);
+            word-break: break-all;
+            font-size: 0.9rem;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(37, 244, 238, 0.3);
+            border-radius: 50%;
+            border-top-color: #25F4EE;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .success { color: #25F4EE; }
+        .error { color: #FE2C55; }
+        .countdown {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 1rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">✅</div>
-        <h1>TikTok Connected Successfully!</h1>
-        <p id="status">Processing login...</p>
+        <div class="icon">🎵</div>
+        <h1>TikTok Authentication</h1>
+        <div id="status" class="status">
+            <div class="loading"></div>
+            Processing login...
+        </div>
         <div id="code-display" class="code" style="display:none;"></div>
-        <p><small>You can close this page and return to the Heybie app.</small></p>
+        <p id="instructions">Please wait while we redirect you back to the Heybie app...</p>
+        <p id="countdown" class="countdown"></p>
     </div>
     
     <script>
@@ -53,38 +106,134 @@
         
         const statusEl = document.getElementById('status');
         const codeDisplayEl = document.getElementById('code-display');
+        const instructionsEl = document.getElementById('instructions');
+        const countdownEl = document.getElementById('countdown');
         
-        if (error) {
-            statusEl.textContent = `Error: ${error}`;
-            statusEl.style.color = '#ff6b6b';
-        } else if (code) {
-            statusEl.textContent = 'Login successful! Authorization code received.';
-            codeDisplayEl.textContent = `Auth Code: ${code}`;
-            codeDisplayEl.style.display = 'block';
-            
-            // Store the code in localStorage for the app to pick up
-            localStorage.setItem('tiktok_auth_code', code);
-            localStorage.setItem('tiktok_auth_state', state || '');
-            localStorage.setItem('tiktok_auth_success', 'true');
-            localStorage.setItem('tiktok_auth_timestamp', Date.now().toString());
-            
-            // Try to communicate with the app (if it supports custom URL schemes)
-            setTimeout(() => {
+        let redirectAttempted = false;
+        let countdownSeconds = 10;
+        
+        function updateCountdown() {
+            if (countdownSeconds > 0) {
+                countdownEl.textContent = `Auto-closing in ${countdownSeconds} seconds...`;
+                countdownSeconds--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                countdownEl.textContent = 'You can safely close this page.';
                 try {
-                    window.location.href = `com.heybiecom.heybie://tiktok-callback?code=${code}&state=${state}`;
+                    window.close();
                 } catch (e) {
-                    console.log('Could not redirect to app');
+                    console.log('Cannot auto-close window');
                 }
-            }, 1000);
-        } else {
-            statusEl.textContent = 'No authorization code received.';
-            statusEl.style.color = '#ff6b6b';
+            }
         }
         
-        // Auto-close after 5 seconds
-        setTimeout(() => {
-            window.close();
-        }, 5000);
+        function attemptAppRedirect() {
+            if (redirectAttempted) return;
+            redirectAttempted = true;
+            
+            try {
+                // Primary deep link redirect to heybie://auth/tiktok
+                const deepLinkUrl = code 
+                    ? `heybie://auth/tiktok?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}&from=web`
+                    : `heybie://auth/tiktok?error=${encodeURIComponent(error || 'unknown')}&from=web`;
+                
+                console.log('Attempting deep link redirect:', deepLinkUrl);
+                window.location.href = deepLinkUrl;
+                
+                // Fallback: try alternative schemes
+                setTimeout(() => {
+                    try {
+                        const fallbackUrl = code 
+                            ? `com.heybiecom.heybie://tiktok-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`
+                            : `com.heybiecom.heybie://tiktok-callback?error=${encodeURIComponent(error || 'unknown')}`;
+                        window.location.href = fallbackUrl;
+                    } catch (e) {
+                        console.log('Fallback redirect failed:', e);
+                    }
+                }, 500);
+                
+            } catch (e) {
+                console.log('Deep link redirect failed:', e);
+            }
+        }
+        
+        // Process the OAuth response
+        if (error) {
+            statusEl.innerHTML = `<span class="error">❌ Authentication Error</span>`;
+            statusEl.className = 'status error';
+            instructionsEl.innerHTML = `<strong>Error:</strong> ${error}<br>Please try again in the Heybie app.`;
+            
+            // Store error for app polling (backup method)
+            try {
+                localStorage.setItem('tiktok_auth_error', error);
+                localStorage.setItem('tiktok_auth_timestamp', Date.now().toString());
+            } catch (e) {
+                console.log('LocalStorage not available');
+            }
+            
+            // Still attempt redirect with error
+            setTimeout(attemptAppRedirect, 1000);
+            
+        } else if (code) {
+            statusEl.innerHTML = '<span class="success">✅ Authentication Successful!</span>';
+            statusEl.className = 'status success';
+            instructionsEl.textContent = 'Success! Redirecting you back to the Heybie app...';
+            
+            // Show code for debugging (optional - only in development)
+            if (window.location.hostname === 'localhost' || window.location.hostname.includes('test')) {
+                codeDisplayEl.textContent = `Debug - Auth Code: ${code.substring(0, 20)}...`;
+                codeDisplayEl.style.display = 'block';
+            }
+            
+            // Store success data for app polling (backup method)
+            try {
+                localStorage.setItem('tiktok_auth_code', code);
+                localStorage.setItem('tiktok_auth_state', state || '');
+                localStorage.setItem('tiktok_auth_success', 'true');
+                localStorage.setItem('tiktok_auth_timestamp', Date.now().toString());
+            } catch (e) {
+                console.log('LocalStorage not available');
+            }
+            
+            // Attempt immediate redirect
+            setTimeout(attemptAppRedirect, 800);
+            
+        } else {
+            statusEl.innerHTML = '<span class="error">❌ No Response</span>';
+            statusEl.className = 'status error';
+            instructionsEl.textContent = 'No authorization code received. Please try again in the Heybie app.';
+            
+            setTimeout(attemptAppRedirect, 1000);
+        }
+        
+        // Start countdown
+        setTimeout(updateCountdown, 2000);
+        
+        // Add click handler to retry redirect
+        document.addEventListener('click', () => {
+            if (!redirectAttempted) {
+                attemptAppRedirect();
+            }
+        });
+        
+        // Monitor if user returns to tab (app redirect might have failed)
+        let hidden = false;
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                hidden = true;
+            } else if (hidden) {
+                // User returned to tab, app redirect likely failed
+                instructionsEl.innerHTML = 'Having trouble redirecting? <br><strong>Tap anywhere</strong> to try again, or return to the Heybie app manually.';
+            }
+        });
+        
+        // Log for debugging
+        console.log('TikTok OAuth Response:', {
+            code: code ? 'received' : 'null',
+            state: state,
+            error: error,
+            url: window.location.href
+        });
     </script>
 </body>
 </html>
